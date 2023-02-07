@@ -1,3 +1,5 @@
+use std::env;
+
 use lazy_static::lazy_static;
 use postgres::{Client, Error, NoTls};
 
@@ -25,7 +27,20 @@ struct Db {
 
 impl Db {
     pub fn new() -> Result<Db, Error> {
-        let mut client = Client::connect("host=localhost user=devales dbname=tests", NoTls)?;
+        dotenv::dotenv().ok();
+
+        let main_db_url = env::var("MAIN_DB_URL").unwrap();
+        let mut client = Client::connect(&main_db_url, NoTls)?;
+        client.batch_execute(INIT_DB)?;
+
+        Ok(Db { client })
+    }
+
+    pub fn new_test() -> Result<Db, Error> {
+        dotenv::dotenv().ok();
+
+        let tests_db_url = env::var("TESTS_DB_URL").unwrap();
+        let mut client = Client::connect(&tests_db_url, NoTls)?;
         client.batch_execute(INIT_DB)?;
 
         Ok(Db { client })
@@ -90,7 +105,7 @@ mod tests {
 
     #[test]
     fn select() {
-        let mut db = Db::new().unwrap();
+        let mut db = Db::new_test().unwrap();
         let rows = db.select("*").unwrap();
 
         assert_eq!(rows.len(), 0);
@@ -99,7 +114,7 @@ mod tests {
 
     #[test]
     fn insert() {
-        let mut db = Db::new().unwrap();
+        let mut db = Db::new_test().unwrap();
         let name = "Ferris";
         let email = "ferris@gmail.com";
 
@@ -120,7 +135,7 @@ mod tests {
 
     #[test]
     fn update() {
-        let mut db = Db::new().unwrap();
+        let mut db = Db::new_test().unwrap();
         let name = "Frris";
         let email = "frris@gmail.com";
 
@@ -142,7 +157,7 @@ mod tests {
 
     #[test]
     fn delete() {
-        let mut db = Db::new().unwrap();
+        let mut db = Db::new_test().unwrap();
         db.delete("*").unwrap();
         let rows = db.select("*").unwrap();
 
